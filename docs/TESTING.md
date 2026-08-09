@@ -1299,6 +1299,34 @@ container drives `path()`, `activate_volume`, `volume_size_info` and resize dire
 | **G8** | Offline migration, and `--restart` migration of a running container | the source node is left clean |
 | **G9** | Destroy every container, including the template and its linked clone | no disks left on the storage, and the audit above is clean on every node |
 
+### H — an operation killed part-way through
+
+Asked for on the Proxmox VE forum: what happens when a snapshot, clone, resize or
+migration is interrupted half-way. Driven against a DS925+ on the pc-pve cluster, with
+each kill verified against the target process's own `ps` line before the signal was
+sent.
+
+| | Killed at | Result |
+|---|---|---|
+| **H1** | a snapshot, at 0.3 s, 0.8 s and 1.3 s | Either nothing on either side, or the snapshot present on **both** — in the configuration and on the storage server with its `taken_by`. Never one without the other. Re-using the name afterwards is refused as a duplicate, which is correct |
+| **H2** | a resize, at 0.3 s, 0.8 s, 1.3 s and 2.0 s | Either nothing, or both sides at the new size. Never out of step. `qm rescan --vmid` is the reconciliation if it ever were |
+| **H3** | a full clone, at 3 s | Leaves `<newid>.conf` carrying `lock: clone` and **no volume on the storage server**. `qm destroy` refuses with *VM is locked (clone)*; `qm unlock <newid>` then `qm destroy <newid>` clears it, verified step by step with nothing left on either side |
+| **H4** | an offline migration, at 1.0 s | The configuration stays on the source node, the guest starts and runs there, and the target node has nothing |
+
+Afterwards, on all three nodes: the only multipath map and tracking entry belonged to
+the guest that was still running, and `pve-syno-reap --all` reported nothing left
+behind on each. The storage server was back to 0 LUNs and 0 snapshots.
+
+**The method was wrong twice before it was right, and that is the part worth keeping.**
+`cmd & p=$!` inside a redirection gives the pid of the subshell bash forks, not of the
+command it then exec's — so the first two passes killed a wrapper and the operation ran
+to completion as an orphan. Worse, sampling the two sides two seconds after that fake
+kill caught the operation still finishing, which produced a clean, repeatable, entirely
+false result: ten runs "showing" that an interrupted resize leaves the storage server
+one step larger than the VM configuration. It does not. The fix is `( exec cmd ) &`, and
+then to confirm with `ps -o args= -p $!` that the pid really is the command before
+signalling it.
+
 ---
 
 ## Reporting
