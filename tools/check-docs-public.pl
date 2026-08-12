@@ -32,9 +32,12 @@ my @RULES = (
     # breath reads as a measurement; the requirements table is allowed to say 8.x
     # is expected to work provided it says in the same sentence that it was never
     # tested, which this pattern does not match.
+    # The fourth field asks for the cite-vs-use exemption: a changelog entry
+    # quotes the very wording it reports removing — 「8.x／9.x」 — and a guard that
+    # cannot tell a citation from a claim would forbid recording the correction.
     [ 'a support claim for Proxmox VE 8, which nothing has run on',
       qr{(?:PVE|Proxmox\s*VE)\s*8\s*(?:/|／)\s*9 | 8\.x\s*(?:/|／)\s*9\.x | 支援\s*(?:PVE|Proxmox\s*VE)\s*8}x,
-      'say 9, and say separately that 8.x is expected to work but was never tested' ],
+      'say 9, and say separately that 8.x is expected to work but was never tested', 1 ],
     # strip_code: a term inside backticks is being CITED, not used. The changelog
     # says «`登記簿` reads as mainland usage and is now `驗證紀錄`», and a guard that
     # cannot tell a thing from prose about the thing is the seventh instance of

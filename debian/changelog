@@ -1,3 +1,38 @@
+jt-pve-storage-synology (0.9.4-1) unstable; urgency=medium
+
+  * Group H of the checklist: an operation killed part-way through. A killed
+    snapshot leaves it on both sides or on neither, never one without the other; a
+    killed resize leaves both sides at the old size or both at the new one; a killed
+    full clone leaves <newid>.conf with lock: clone and NO volume on the storage
+    server, cleared by qm unlock then qm destroy; a killed offline migration leaves
+    the guest running on the source node. Afterwards every node's only map belonged
+    to the guest still running and the storage server was back to 0 LUNs.
+  * DESTROY was measured inside a PVE worker rather than reasoned about. The related
+    dellemc project found that fork_worker ends a worker with POSIX::_exit, which
+    skips END blocks and global destruction, so a session released "at exit" is never
+    released. A resize driven through the HTTPS API shows DESTROY running three times
+    at phase=RUN inside the worker before it exits. It holds because _api returns a
+    new object per call and nothing keeps it, and t/09-session.t now asserts that.
+  * PVE 8 is no longer claimed as supported. Every node this has run on is PVE 9;
+    8.x is expected to work because the API version is negotiated and the floor is
+    API 10, and the requirements table says both halves of that plainly. The Chinese
+    half of that row had been left saying 8.x/9.x after the English was corrected.
+  * tools/check-bilingual.pl compares the figures in the two halves of every
+    lang-en/lang-zh pair, so a correction applied to one half only is caught without
+    reading either language. check-docs-public additionally refuses a PVE 8 support
+    claim outright. Both are in release-check.
+  * Table rules were --border-light, which is right under a heading and wrong inside
+    a table, where the line is what a reader follows across to their column. From
+    dellemc. Rules have their own token now.
+  * A section's horizontal padding vanished between roughly 1100 and 1200 pixels of
+    browser width: calc((100% - 920px) / 2) goes negative there, which invalidates
+    the whole shorthand rather than shrinking it, so text and tables ran flush into
+    both edges.
+  * Every code block has a copy button, and a comment sits above the command it
+    explains rather than after it.
+
+ -- Jason Cheng (Jason Tools) <jason@jason.tools>  Wed, 12 Aug 2026 21:30:00 +0800
+
 jt-pve-storage-synology (0.9.3-1) unstable; urgency=medium
 
   * LXC containers are verified rather than merely declared. The whole set was

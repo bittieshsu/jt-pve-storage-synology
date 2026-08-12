@@ -6,6 +6,84 @@ The register of what has been verified against real hardware, and what has not,
 is [docs/TESTING.md](docs/TESTING.md) — it is more useful than this file for
 deciding whether to trust a given release.
 
+## [0.9.4] - 2026-08-12
+
+### Verified
+
+- **An operation killed part-way through — group H of the checklist**, asked for on the
+  Proxmox VE forum. Each operation was killed with `SIGKILL` mid-flight, with the target
+  confirmed against its own `ps` line first, and then both the VM configuration and the
+  storage server were audited after the work had settled. A killed **snapshot** (0.3 s,
+  0.8 s, 1.3 s) leaves it on both sides or on neither, never one without the other. A
+  killed **resize** (0.3 s, 0.8 s, 1.3 s, 2.0 s) leaves both sides at the old size or
+  both at the new one. A killed **full clone** (3 s) leaves `<newid>.conf` carrying
+  `lock: clone` and **no volume on the storage server**; `qm destroy` refuses, and
+  `qm unlock <newid>` then `qm destroy <newid>` clears it. A killed **offline migration**
+  (1.0 s) leaves the configuration on the source node with the guest starting and running
+  there. Afterwards every node's only multipath map and tracking entry belonged to the
+  guest still running, `pve-syno-reap --all` reported nothing left behind, and the storage
+  server was back to 0 LUNs and 0 snapshots.
+- **`DESTROY` runs inside a PVE worker, measured rather than reasoned.** The related
+  dellemc project found that `PVE::RESTEnvironment::fork_worker` ends a worker with
+  `POSIX::_exit`, which skips END blocks, global destruction and even the flushing of
+  buffered output — so a session released "at exit" is never released, and a worker is
+  what runs every task that touches a volume. `DESTROY` was temporarily instrumented on a
+  node and a resize driven through the **HTTPS API** with a token, which is a pvedaemon
+  worker under `perl -T` and neither `qm` nor `pvesh`. The task log shows three
+  destructions at `phase=RUN` inside the worker before it exited, and the disk grew from
+  2G to 3G. It holds because `_api` returns a new object per call and nothing keeps it,
+  which is now asserted rather than trusted.
+
+### Fixed
+
+- **Proxmox VE 8 was claimed as supported and has never been run.** Every node this
+  plugin has run on is PVE 9. The requirements table now says 9.x is what it has been
+  driven on, that the storage API version is negotiated with a floor of API 10, so 8.x is
+  expected to work, and that it has never been tested there. The Chinese half of that row
+  had been left saying 「8.x／9.x」 after the English half was corrected, and the sweep that
+  should have caught it was verified with truncated output.
+- **A section lost its side padding between roughly 1100 and 1200 pixels of browser
+  width.** `calc((100% - 920px) / 2)` goes negative once the section is narrower than the
+  content column — and the section is the viewport minus the sidebar, not the viewport —
+  which invalidates the whole `padding` shorthand rather than shrinking it, so text and
+  tables ran flush into both edges.
+- **The lines inside a table were `--border-light`**, which is the right tone for a
+  divider under a heading and the wrong one inside a table, where the line is what a
+  reader follows across to find the cell in their own column. From dellemc; rules have
+  their own token now.
+- A stray white speck beside the version badge: the separator is drawn by a 1px-wide
+  inline-block that still contained a middle dot, which painted outside its box.
+
+### Added
+
+- **`tools/check-bilingual.pl`** compares the figures carried by the two halves of every
+  `lang-en`/`lang-zh` pair, so a correction applied to one half only is caught without
+  needing to read either language. Shown to fail on a deliberate regression.
+- **`check-docs-public` refuses a Proxmox VE 8 support claim** outright, since the
+  bilingual comparison cannot catch that particular case.
+- **`t/09-session.t` asserts that nothing keeps an API client** past the call that made
+  it: no package variable, not PVE's own `$cache`, and two calls give two objects. A
+  per-process client cache is exactly what turned `POSIX::_exit` into a leak in the
+  sibling project.
+- **A copy button on every code block**, added by script so a block added later gets one,
+  with a textarea fallback where `navigator.clipboard` is unavailable.
+
+### Changed
+
+- The operations table is Operation × VM × Container, one row per operation, so the two
+  places the guest types genuinely differ are visible: Proxmox VE does not snapshot a
+  container's memory and has no live migration for containers, and both are marked *n/a*
+  rather than unsupported. A conditional yes keeps the tick, in amber, with the condition
+  under it. Thin provisioning, multipath and CHAP are rows now.
+- Comments in a code block sit above the command they explain rather than after it.
+- The measured figures above the evidence are four tiles in one panel, each with the same
+  two parts in the same order, and each answering the same question: what happens when
+  something fails.
+- Chinese: 陣列 becomes 儲存伺服器 everywhere, including for the sibling projects, and the
+  two places it meant a JSON array say so. 「厚配置」 and 「默默」 are gone, and the capacity
+  answer explains what dividing by 1000 and by 1024 actually does instead of naming SI
+  units.
+
 ## [0.9.3] - 2026-08-08
 
 ### Verified

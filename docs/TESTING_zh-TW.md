@@ -49,11 +49,11 @@
 |---|---|
 | `pct create`，rootfs 在這個 storage | 通過。PVE 在 LUN 上建 ext4，容器內 `/` 就是 `/dev/mapper/<map>` |
 | 啟動、進入容器 | 通過 |
-| 快照（執行中，`volume_snapshot_needs_fsfreeze` 為真） | 通過，freeze 與 thaw 都出現在工作記錄裡 |
+| 快照（執行中，`volume_snapshot_needs_fsfreeze` 為真）| 通過，freeze 與 thaw 都出現在工作記錄裡 |
 | 倒回 | 通過。容器內寫入 32 MiB 隨機資料並記下 sha256，覆蓋成 0，倒回後 sha256 一致 |
 | 刪除快照 | 通過 |
 | `pct resize rootfs +2G` | 通過，ext4 線上長大，容器內看到新容量 |
-| 第二個掛接點（`-mp0 <storage>:2,mp=/data`） | 通過，另一個 LUN、另一個 ext4，可寫入 |
+| 第二個掛接點（`-mp0 <storage>:2,mp=/data`）| 通過，另一個 LUN、另一個 ext4，可寫入 |
 | 兩個磁碟一起快照與倒回 | 通過，rootfs 與掛接點一起回到快照時間點 |
 | `vzdump --mode stop` | 通過 |
 | `vzdump --mode suspend` | 通過 |
@@ -63,7 +63,7 @@
 | 停機狀態的完整複製 | 通過 |
 | 離線遷移到另一個節點 | 通過，3 秒，認得是共享 storage |
 | 執行中的容器 `--restart` 遷移 | 通過，26 秒 |
-| 刪除全部容器（含範本與它的連結複本） | 通過，storage 上一個磁碟都不剩 |
+| 刪除全部容器（含範本與它的連結複本）| 通過，storage 上一個磁碟都不剩 |
 | 移除 storage 後的節點狀態 | 執行操作的那個節點乾淨。**另一個節點還留著工作階段**，這是 PVE 的架構，不是缺陷，用文件裡的每節點清理指令處理，實測清得掉 |
 | 儲存伺服器端 | 0 個 LUN、0 個 target、0 個 initiator |
 
