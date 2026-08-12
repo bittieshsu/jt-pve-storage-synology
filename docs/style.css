@@ -40,6 +40,12 @@
 
     --border: #e2e8f0;
     --border-light: #f1f5f9;
+    /* A table rule is not a divider under a heading. Under a heading the eye
+       already knows where the boundary is, so #f1f5f9 is enough; inside a table
+       the line is what a reader follows across to find the cell in their own
+       column, and at that tone there was nothing to follow. Its own token, so
+       the next change is one place. From the related dellemc project. */
+    --table-rule: #dde5ee;
 
     --code-bg: #1a1f2e;
     --code-text: #d4d4d8;
@@ -612,7 +618,7 @@ th {
 }
 td {
     padding: 9px 14px;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--table-rule);
     vertical-align: top; color: var(--text-secondary);
 }
 
@@ -621,7 +627,7 @@ td {
    draws the outer edge, and a border there would double it. A cell spanning
    the whole width has no column to be separated from. */
 th:not(:last-child),
-td:not(:last-child) { border-right: 1px solid var(--border-light); }
+td:not(:last-child) { border-right: 1px solid var(--table-rule); }
 
 th:not(:last-child) { border-right-color: var(--border); }
 

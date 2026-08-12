@@ -31,7 +31,7 @@ my $CLASS = 'PVE::Storage::Custom::Synology::API';
 # DESTROY without `local $@` would then leave that failure in $@.
 our @LOGGED_OUT;
 {
-    no warnings 'redefine';
+    no warnings 'redefine', 'once';
     *PVE::Storage::Custom::Synology::API::logout = sub {
         my ($self) = @_;
         return if !defined $self->{sid};
@@ -220,6 +220,53 @@ subtest 'Deferred runs on every exit path' => sub {
 
     eval { $D->new('not a coderef') };
     like($@, qr/needs a code reference/, 'and it refuses anything but a coderef');
+};
+
+# ---------------------------------------------------------------------------
+# A worker never reaches global destruction, so nothing may hold the client past
+# the method that made it.
+#
+# From the related dellemc project, which met this on a customer's array:
+# `PVE::RESTEnvironment::fork_worker` ends the child with `POSIX::_exit`, which
+# skips END blocks, global destruction, and even the flushing of buffered output.
+# A worker is what runs `qm create`, `qm destroy` and every other task that
+# touches a volume — so a session released "at exit" is a session never released.
+#
+# This plugin is safe for one reason only: `_api` returns a NEW object every call
+# and nothing keeps it, so the client is freed when the plugin method returns and
+# DESTROY runs there, long before any `_exit`. That is a property worth asserting
+# rather than trusting, because a per-process client cache is exactly the kind of
+# optimisation someone adds later — it is what dellemc had, and it is what turned
+# `_exit` into a leak there.
+#
+# The `${^GLOBAL_PHASE} eq 'DESTRUCT'` guard in DESTROY is therefore belt and
+# braces on this path, not the thing that saves it.
+subtest 'nothing keeps the client past the call that made it' => sub {
+    my $src = do {
+        open(my $fh, '<', 'lib/PVE/Storage/Custom/SynologySANPlugin.pm')
+            or plan skip_all => 'plugin source not readable';
+        local $/; <$fh>;
+    };
+
+    # Comments and heredocs would otherwise let a mention of a cache read as one.
+    $src =~ s/^\s*#.*$//mg;
+
+    unlike($src, qr/\bour \s* \$ \w* (?:api|client|session) \w*/xi,
+        'no package variable holds an API client');
+    unlike($src, qr/\$cache -> \{ [^}]* \} \s* (?:\/\/)?= \s* [^;]* _api/xs,
+        "PVE's own \$cache is not used to keep one either");
+
+    # And the constructor really does hand out a fresh object each time.
+    my @made;
+    no warnings 'redefine';
+    local *PVE::Storage::Custom::Synology::API::new = sub {
+        my $o = bless { owner_pid => $$ }, $CLASS;
+        push @made, $o;
+        return $o;
+    };
+    my $a = PVE::Storage::Custom::Synology::API->new;
+    my $b = PVE::Storage::Custom::Synology::API->new;
+    isnt("$a", "$b", 'two calls are two objects, so neither outlives its caller');
 };
 
 done_testing();
