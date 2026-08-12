@@ -1299,6 +1299,38 @@ container drives `path()`, `activate_volume`, `volume_size_info` and resize dire
 | **G8** | Offline migration, and `--restart` migration of a running container | the source node is left clean |
 | **G9** | Destroy every container, including the template and its linked clone | no disks left on the storage, and the audit above is clean on every node |
 
+### DESTROY really does run inside a worker, measured rather than reasoned
+
+The related dellemc project found that `PVE::RESTEnvironment::fork_worker` ends a worker
+with `POSIX::_exit`, which skips END blocks, global destruction and even the flushing of
+buffered output — so anything a plugin does "at exit" does not happen in the process that
+runs `qm create`, `qm destroy` or any other task touching a volume. This plugin releases
+its DSM session in `DESTROY`, so whether that is reached in a worker decides whether the
+session is released at all.
+
+Reading the code says it is: `_api` returns a new object per call and nothing keeps it,
+so the client is freed when the plugin method returns. Reading is not measuring, so it
+was measured. `DESTROY` was temporarily given a line naming its pid, whether
+`PVE::RESTEnvironment->is_worker` is true, and `${^GLOBAL_PHASE}`; a resize was then
+driven through the **HTTPS API** with an API token, which is a pvedaemon worker under
+`perl -T` and is neither `qm` nor `pvesh`. The worker's own task log:
+
+```
+SYNO-DESTROY pid=3563453 worker=1 phase=RUN
+SYNO-DESTROY pid=3563453 worker=1 phase=RUN
+SYNO-DESTROY pid=3563453 worker=1 phase=RUN
+TASK OK
+```
+
+Three API objects over the operation, each destroyed at **`phase=RUN`** — ordinary scope
+exit, not global destruction — inside the worker, before it exited, and the disk really
+did grow from 2G to 3G. So the session goes back while the process can still speak to the
+NAS, and the `${^GLOBAL_PHASE} eq 'DESTRUCT'` guard in `DESTROY` never fires on this path:
+it is belt and braces here, not the thing that saves it.
+
+The file was restored from a copy afterwards and verified against the package with
+`dpkg -V`.
+
 ### H — an operation killed part-way through
 
 Asked for on the Proxmox VE forum: what happens when a snapshot, clone, resize or

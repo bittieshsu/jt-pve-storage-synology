@@ -858,6 +858,23 @@ PVE 會在這個 storage 交出的裝置上做 ext4 再掛起來，所以容器�
 | **G8** | 離線遷移，以及對執行中的容器做 `--restart` 遷移 | 來源節點沒有殘留 |
 | **G9** | 刪掉全部容器，包含範本與它的連結複本 | storage 上一顆磁碟都不剩，而上面那份稽核在每個節點上都乾淨 |
 
+### DESTROY 在 worker 裡真的會執行,這是量測出來的,不是推論的
+
+相關的 dellemc 專案發現：`PVE::RESTEnvironment::fork_worker` 是用 `POSIX::_exit` 結束 worker 的，那會跳過 `END` 區塊、跳過 global destruction,連緩衝輸出都不會 flush。所以 plugin 任何「在程式結束時」做的事，在執行 `qm create`、`qm destroy` 或任何碰到磁碟的工作的那個程序裡都不會發生。而這個 plugin 是在 `DESTROY` 裡把 DSM 工作階段還回去的，所以那裡在 worker 裡到不到得了，決定了工作階段到底有沒有被釋放。
+
+讀程式碼的答案是「會」：`_api` 每次呼叫都回傳新物件，而且沒有任何地方留著它，所以 client 在 plugin 方法回傳時就被釋放。讀不等於量，所以去量了。暫時在 `DESTROY` 裡加一行，印出它的 pid、`PVE::RESTEnvironment->is_worker` 是不是真、以及 `${^GLOBAL_PHASE}`;然後用 API 權杖從 **HTTPS API** 驅動一次擴充，那是一個在 `perl -T` 底下的 pvedaemon worker,既不是 `qm` 也不是 `pvesh`。worker 自己的工作記錄：
+
+```
+SYNO-DESTROY pid=3563453 worker=1 phase=RUN
+SYNO-DESTROY pid=3563453 worker=1 phase=RUN
+SYNO-DESTROY pid=3563453 worker=1 phase=RUN
+TASK OK
+```
+
+整個操作過程中有三個 API 物件，每一個都在 **`phase=RUN`** 時被銷毀，也就是一般的離開作用域，不是 global destruction;而且都在 worker 結束之前，在 worker 裡面發生。那顆磁碟也確實從 2G 長到 3G。所以工作階段是在程序還能跟 NAS 說話的時候還回去的，而 `DESTROY` 裡那個 `${^GLOBAL_PHASE} eq 'DESTRUCT'` 的守門在這條路上從來不會觸發：它在這裡是多一層保險，不是救命的那一層。
+
+事後那個檔案是從備份還原的，並且用 `dpkg -V` 對套件驗證過。
+
 ### H——操作做到一半被砍掉
 
 Proxmox VE 論壇上有人問的：快照、複製、擴充、遷移做到一半被中斷會怎樣。在 pc-pve 叢集上對一台 DS925+ 跑過，而且每一次砍之前，都先用目標行程自己的 `ps` 內容確認過砍的是命令本身。
