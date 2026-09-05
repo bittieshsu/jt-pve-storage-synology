@@ -783,11 +783,11 @@ Perl 把類別名稱綁到了 `$path`，把剩下那個參數綁到 `%opts`。�
 
 ### 設計上已支援，但未驗證——需要本專案手上沒有的硬體
 
-Synology 兩種高可用性架構都已實作。兩種都沒有實際跑過。plugin 對無法驗證的架構 **發出警告**而不是拒絕，並且在有人回報實際運行結果之前，不會聲稱它驗證過。
+Synology 兩種高可用性架構都已實作。**SHA 的一次手動切換現在已經有實機回報**，自動故障轉移還沒有，雙控制器機箱也從來沒有接近過這個東西。plugin 對無法驗證的架構 **發出警告**而不是拒絕，並且在有人回報實際運行結果之前，不會聲稱它驗證過。
 
 | # | 問題 |
 |---|---|
-| R-15 | **Synology HA（SHA）**：HA 叢集 IP 在故障切換後是否仍表現為單一管理位址；以及本 plugin 拿來當 storage 身分的 `SYNO.Core.ISCSI.Node` uuid，切換後會不會變。如果會變，把 storage 釘在它上面就不是保護而是破壞 |
+| R-15 | ~~**Synology HA（SHA）**：叢集 IP 在切換後是否仍表現為單一管理位址；以及本 plugin 拿來當 storage 身分的 `SYNO.Core.ISCSI.Node` uuid，切換後會不會變~~ **手動切換這一半已解答，來源是使用者在一組 RS2423RP+（DSM 7.4.1）的 SHA 上的回報，不是本專案自己量測的。**當時有一台 guest 正在運行：uuid 沒有變，所以 storage 的身分不變；`multipath -ll` 切換前後完全相同，也就是 WWID、map 與路徑全部存活；target 的 IQN 與 portal 沒有變；iSCSI 工作階段在重試 8 次之後自行恢復，前後 **23 秒**，而那台 guest 完全不受影響。這 23 秒根本沒有輪到 multipath：Proxmox VE 節點的 `node.session.timeo.replacement_timeout` 預設是 120，所以工作階段一直在恢復中，路徑從頭到尾沒有被判死，`no_path_retry` 也就沒有派上用場。**仍然未解的是不優雅的那一半**：手動切換會等寫入結束才動作，斷電觸發的自動故障轉移不會，而 Synology 自己的白皮書也寫明，留在故障機器快取裡的資料有可能不會被重送。另外一件對容量規劃有用的事：Synology 公布的切換時間依機型是 30 到 64 秒，而且會隨 LUN 數量增加，而這個 plugin 是一顆 VM 磁碟一個 LUN |
 | R-16 | **UC／SA 雙控制器機型**（`firmware_ver` 含 `DSM UC`）：兩個控制器各有自己的管理位址，沒有虛擬 IP。`SYNO.Core.Network.Interface` 接受 `relay_node=node0`／`node1` 列舉對側，在單控制器的測試機上兩者回傳相同的介面，所以這個機制在不需要它的地方是無害的。**依 Synology 自己 CSI 的邏輯實作，但未驗證**。未解的問題正是只有機箱能回答的：一顆 LUN 是否由單一控制器擁有、target 的 portal 是否依控制器而不同。這兩件合起來決定故障切換後節點還找不找得到自己的磁碟 |
 
 ---

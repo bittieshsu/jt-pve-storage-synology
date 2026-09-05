@@ -372,7 +372,7 @@
         <div class="split-card split-card--no">
             <div class="split-card__head"><span class="lang-en">Not verified, and known limits</span><span class="lang-zh">尚未驗證，以及已知的限制</span></div>
             <ul>
-                <li><span class="lang-en">Synology HA has never been tested; no such pair has been near this</span><span class="lang-zh">Synology HA 沒有測過，手上從來沒有這種機器</span></li>
+                <li><span class="lang-en">Synology HA: one manual switchover on an operator's pair, reported back. The ungraceful case, an auto-failover on power loss, is untested</span><span class="lang-zh">Synology HA：使用者的一組機器上有一次手動切換的回報。不優雅的那種，也就是斷電觸發的自動故障轉移，沒有測過</span></li>
                 <li><span class="lang-en">A UC dual-controller chassis has never been tested either. It is supported by design, and the plugin warns when it detects one</span><span class="lang-zh">UC 雙控制器機箱也沒有測過。設計上支援，plugin 偵測到會發出警告</span></li>
                 <li><span class="lang-en">The DSM account must be in <code>administrators</code>, because DSM offers nothing narrower</span><span class="lang-zh">DSM 帳號必須屬於 <code>administrators</code>，因為 DSM 沒有更小的選項</span></li>
                 <li><span class="lang-en">Two models out of everything Synology sells is a small sample</span><span class="lang-zh">兩個機型，對照 Synology 賣的機型數量是很小的樣本</span></li>
@@ -494,7 +494,7 @@
         <tbody>
         <tr>
             <td><strong>DSM</strong></td>
-            <td><span class="lang-en"><strong>7.0 or later</strong>. <strong>7.1.1</strong>, <strong>7.3.2</strong> and <strong>7.4.1</strong> are verified. Dual-controller DSM UC is <strong>refused</strong>, not approximated. The version is a floor, not the decision: the capability gates, the advertised API set and a Btrfs volume are what actually decide, and <strong>Btrfs support is model-dependent</strong> —an entry-level NAS on 7.2 may still be unusable</span><span class="lang-zh"><strong>7.0 以上</strong>，已驗證 <strong>7.1.1</strong>、<strong>7.3.2</strong> 與 <strong>7.4.1</strong>。雙控制器的 DSM UC 會被<strong>拒絕</strong>，不會假裝支援。版本號只是門檻不是判準：真正決定的是能力閘門、公佈的 API 範圍，以及儲存空間是不是 Btrfs，而 <strong>Btrfs 支援是看機型的</strong>，一台跑 7.2 的入門機仍然可能不能用</span></td>
+            <td><span class="lang-en"><strong>7.0 or later</strong>. <strong>7.1.1</strong>, <strong>7.3.2</strong> and <strong>7.4.1</strong> are verified. Dual-controller DSM UC is <strong>warned about</strong>, not approximated. The version is a floor, not the decision: the capability gates, the advertised API set and a Btrfs volume are what actually decide, and <strong>Btrfs support is model-dependent</strong> —an entry-level NAS on 7.2 may still be unusable</span><span class="lang-zh"><strong>7.0 以上</strong>，已驗證 <strong>7.1.1</strong>、<strong>7.3.2</strong> 與 <strong>7.4.1</strong>。雙控制器的 DSM UC 會<strong>發出警告</strong>，不會假裝支援。版本號只是門檻不是判準：真正決定的是能力閘門、公佈的 API 範圍，以及儲存空間是不是 Btrfs，而 <strong>Btrfs 支援是看機型的</strong>，一台跑 7.2 的入門機仍然可能不能用</span></td>
         </tr>
         <tr>
             <td><strong><span class="lang-en">Volume</span><span class="lang-zh">儲存空間</span></strong></td>
@@ -559,8 +559,8 @@
 <section class="doc-section" id="ha">
     <h2 class="section-title"><span class="lang-en">High availability and dual controllers</span><span class="lang-zh">高可用性與雙控制器</span></h2>
     <p class="section-subtitle">
-        <span class="lang-en">Synology has two arrangements that both get called "HA", and they are different problems. The plugin handles both, and neither has been verified on hardware yet.</span>
-        <span class="lang-zh">Synology 有兩種都被叫做「HA」的架構，而它們是兩個不同的問題。兩種架構 plugin 都已有對應處理，但目前皆尚未完成實機驗證。</span>
+        <span class="lang-en">Synology has two arrangements that both get called "HA", and they are different problems. The plugin handles both. A switchover on an SHA pair has been reported from hardware; a dual-controller chassis has not.</span>
+        <span class="lang-zh">Synology 有兩種都被叫做「HA」的架構，而它們是兩個不同的問題。兩種架構 plugin 都已有對應處理。SHA 的一次切換已經有實機回報，雙控制器機箱則還沒有。</span>
     </p>
 
     <div class="table-wrap">
@@ -611,14 +611,14 @@
     </p>
 
     <details class="alert alert--warning">
-        <summary><strong><span class="lang-en">Neither HA shape has been run on hardware</span><span class="lang-zh">兩種 HA 都還沒有在實機上跑過</span></strong></summary>
-        <span class="lang-en">SHA is low risk —one address that happens to move, which is already handled. UC is a genuine unknown: whether a LUN is owned by one controller, and whether a target's portals differ per controller, together decide whether a node still reaches its disk after a failover. So the plugin <strong>warns</strong> on <code>DSM UC</code> rather than refusing, and this page keeps saying unverified until someone reports a run.</span>
-        <span class="lang-zh">SHA 風險低：就是一個會移動的位址，而那已經處理了。UC 是真正的未知：一顆 LUN 是否由單一控制器擁有、target 的 portal 是否依控制器而不同，這兩件合起來決定故障切換之後節點還找不找得到自己的磁碟。所以 plugin 偵測到 <code>DSM UC</code> 時<strong>發出警告</strong>而不是拒絕，而這一頁會一直寫著未驗證，直到有人回報實際運行結果。</span>
+        <summary><strong><span class="lang-en">What an SHA switchover did, and what is still open</span><span class="lang-zh">SHA 切換實際發生了什麼，以及還沒解決的部分</span></strong></summary>
+        <span class="lang-en">A manual switchover on an RS2423RP+ SHA pair (DSM 7.4.1) with a guest running was reported by the operator who ran it: the <code>SYNO.Core.ISCSI.Node</code> uuid unchanged, <code>multipath -ll</code> identical before and after, the target IQN and portal unchanged, and the iSCSI sessions back on their own in 23 seconds. The guest was unaffected, and the recovery never reached multipath: a Proxmox VE node ships <code>replacement_timeout</code> at 120, so no path was ever failed. Untested is the auto-failover on power loss, which does not wait for writes to finish. UC is a genuine unknown: whether a LUN is owned by one controller, and whether a target's portals differ per controller, together decide whether a node still reaches its disk after a failover. So the plugin <strong>warns</strong> on <code>DSM UC</code> rather than refusing.</span>
+        <span class="lang-zh">一位使用者在一組 RS2423RP+ 的 SHA（DSM 7.4.1）上做了一次手動切換，當時有一台 guest 正在運行，並回報了結果：<code>SYNO.Core.ISCSI.Node</code> 的 uuid 沒有變，<code>multipath -ll</code> 切換前後完全相同，target 的 IQN 與 portal 沒有變，iSCSI 工作階段在 23 秒內自行恢復。那台 guest 完全不受影響，而這段恢復根本沒有輪到 multipath：Proxmox VE 節點的 <code>replacement_timeout</code> 預設是 120，所以路徑從頭到尾沒有被判死。沒有測過的是斷電觸發的自動故障轉移，它不會等寫入結束才動作。UC 是真正的未知：一顆 LUN 是否由單一控制器擁有、target 的 portal 是否依控制器而不同，這兩件合起來決定故障切換之後節點還找不找得到自己的磁碟。所以 plugin 偵測到 <code>DSM UC</code> 時<strong>發出警告</strong>而不是拒絕。</span>
     </details>
 
     <p>
-        <span class="lang-en"><strong>If you run either, one answer is worth more than any other report</strong>: after a failover, does <code>SYNO.Core.ISCSI.Node</code> still return the same uuid? The plugin uses that uuid as its answer to "which storage server is this", rather than the management address, because an address can be re-pointed at a different NAS. If the uuid changes across a failover, one NAS is read as two, and the approach itself has to change.</span>
-        <span class="lang-zh"><strong>如果你手上有這兩種機型之一，最值得回報的就是一件事</strong>：故障切換之後，<code>SYNO.Core.ISCSI.Node</code> 回傳的 uuid 還是同一個嗎？plugin 拿這個 uuid 來認「這台儲存伺服器是誰」，而不是拿管理位址，因為位址可以被改指到另一台 NAS。如果 uuid 在切換之後會變，同一台 NAS 前後就會被認成兩台，那這個做法本身就得換掉。</span>
+        <span class="lang-en"><strong>If you run either, the report still worth more than any other</strong> is an auto-failover rather than a manual switchover: pull the power on the active server with a guest running, and say what the node saw. A manual switchover waits for writes to finish and an auto-failover does not, so that is the half that can still surprise. On a UC chassis, anything at all is new.</span>
+        <span class="lang-zh"><strong>如果你手上有這兩種機型之一，最值得回報的仍然是一件事</strong>：自動故障轉移，而不是手動切換。在有 guest 正在運行的情況下把主機的電源拔掉，然後說出節點看到了什麼。手動切換會等寫入結束才動作，自動故障轉移不會，所以那才是還會給人意外的那一半。而 UC 機箱上，任何結果都是新的。</span>
     </p>
 </section>
 
@@ -1130,7 +1130,7 @@
         </div>
         <div class="module-item">
             <div class="module-item__name">1.0.0</div>
-            <div class="module-item__desc"><span class="lang-en"><strong>A second model and a second DSM version are done</strong> — a DS925+ on DSM 7.3.2 driven end to end, and the DS918+ carried across a 7.1 → 7.4 upgrade with every LUN uuid intact. What is left: <strong>a Synology HA pair and a dual-controller chassis</strong>, neither of which anyone here has. Every 0.x before it is a prerelease</span><span class="lang-zh"><strong>第二個機型與第二個 DSM 版本已經完成</strong>：一台 DS925+（DSM 7.3.2）完整跑過一輪，而 DS918+ 帶著全部 LUN uuid 完好地跨過了 7.1 → 7.4 升級。還剩下的是：<strong>一組 Synology HA 與一台雙控制器機箱</strong>，而這裡沒有人有這兩種硬體。在它之前的每一個 0.x 都是預發行版</span></div>
+            <div class="module-item__desc"><span class="lang-en"><strong>A second model and a second DSM version are done</strong> — a DS925+ on DSM 7.3.2 driven end to end, and the DS918+ carried across a 7.1 → 7.4 upgrade with every LUN uuid intact. What is left: <strong>an auto-failover on a Synology HA pair, and a dual-controller chassis</strong>, neither of which anyone here has. Every 0.x before it is a prerelease</span><span class="lang-zh"><strong>第二個機型與第二個 DSM 版本已經完成</strong>：一台 DS925+（DSM 7.3.2）完整跑過一輪，而 DS918+ 帶著全部 LUN uuid 完好地跨過了 7.1 → 7.4 升級。還剩下的是：<strong>一組 Synology HA 上的自動故障轉移，以及一台雙控制器機箱</strong>，而這裡沒有人有這兩種硬體。在它之前的每一個 0.x 都是預發行版</span></div>
         </div>
     </div>
 
@@ -1147,7 +1147,7 @@
     <ul>
         <li><span class="lang-en"><strong>Run the discovery tool on a model this page has not tested.</strong> It only reads: it creates nothing, deletes nothing, and prints what your DSM's SAN API offers. Two models have been tested so far.</span><span class="lang-zh"><strong>在本頁沒測過的機型上跑一次探索工具。</strong>它只讀取，不建立也不刪除任何東西，並印出你的 DSM 的 SAN API 提供什麼。目前測過兩個機型。</span></li>
         <li><span class="lang-en"><strong>Report what broke if you run it in production.</strong> The useful details are the model, the DSM version, what you were doing, and the error as it appeared.</span><span class="lang-zh"><strong>如果你拿它上線，回報壞在哪裡。</strong>有用的細節是機型、DSM 版本、當時在做什麼，以及錯誤訊息原本的樣子。</span></li>
-        <li><span class="lang-en"><strong>A Synology HA pair, or a dual-controller chassis.</strong> Both are supported by design and neither has ever been tested, because no such hardware has been near this. Even a report that it simply worked is new information.</span><span class="lang-zh"><strong>一組 Synology HA，或一台雙控制器機箱。</strong>兩種在設計上都支援，而兩種都沒有被測試過，因為從來沒有這樣的硬體接近過它。就算只是回報「它就這樣正常運作」，那也是新的資訊。</span></li>
+        <li><span class="lang-en"><strong>An auto-failover on a Synology HA pair, or a dual-controller chassis.</strong> A manual SHA switchover has been reported; the power-loss case and UC have not, because no such hardware is here. Even a report that it simply worked is new information.</span><span class="lang-zh"><strong>一組 Synology HA 上的自動故障轉移，或一台雙控制器機箱。</strong>手動的 SHA 切換已經有人回報過，斷電的那一種和 UC 都還沒有，因為這裡沒有這些硬體。就算只是回報「它就這樣正常運作」，那也是新的資訊。</span></li>
         <li><span class="lang-en"><strong>Anything that contradicts this page.</strong> That means something written here is wrong, which is worth more than a feature request.</span><span class="lang-zh"><strong>任何與本頁矛盾的地方。</strong>那代表這裡寫的某句話是錯的，而那比一個功能請求有價值。</span></li>
     </ul>
 

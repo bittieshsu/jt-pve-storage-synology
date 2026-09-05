@@ -63,12 +63,14 @@ not a yes say why.
 > reached over a VPN, which is fine for testing and is **not** where a production
 > guest's disk belongs — a dropped tunnel is a pulled cable.
 >
-> What is still honest to say: no Synology HA or dual-controller chassis has ever
-> been near this, and the DSM account needs administrator rights because DSM
-> offers no narrower one — a non-administrator cannot even log in.
+> What is still honest to say: the one Synology HA pair this has run on was an
+> operator's, reported back rather than driven here, and no dual-controller
+> chassis has been near this at all. The DSM account needs administrator rights
+> because DSM offers no narrower one — a non-administrator cannot even log in.
 >
-> `1.0.0` waits on the minimum DSM privileges being settled, and on the remaining
-> operations being repeated on a second model. [docs/TESTING.md](docs/TESTING.md) is the register of what is
+> `1.0.0` waits on the remaining operations being repeated on a second model, and
+> on hardware nobody here has: an auto-failover on a Synology HA pair, and a
+> dual-controller chassis. [docs/TESTING.md](docs/TESTING.md) is the register of what is
 > verified and what is not, and it is worth reading before trusting this.
 
 ---
@@ -318,8 +320,8 @@ those objects.
 ## High availability and dual controllers
 
 Synology has two arrangements that both get called "HA", and they are different
-problems with different answers. **The plugin handles both, and neither has been
-verified on hardware yet.**
+problems with different answers. **The plugin handles both. A switchover on an
+SHA pair has been reported from hardware; a dual-controller chassis has not.**
 
 | | **Synology HA (SHA)** | **UC / SA dual controller** |
 |---|---|---|
@@ -340,24 +342,36 @@ answer with the same interfaces, so the mechanism is harmless where it is not
 needed. On those models a target's `network_portals` also carries a
 `controller_id`, which a single-controller NAS omits entirely.
 
-### Neither HA shape has been run on hardware
+### What an SHA switchover did, and what is still open
 
-SHA is low risk: it is one address that happens to move, which is the case the
-plugin already handles. UC is a genuine unknown, and the open questions are the
-ones only a chassis can answer — whether a LUN is owned by one controller, and
-whether a target's portals differ per controller. Together those decide whether
-a node still reaches its disk after a failover.
+An operator ran a manual switchover on an **RS2423RP+ SHA pair** (DSM 7.4.1) with
+a guest running, and reported what the node saw. Nothing on the node had to be
+told anything:
 
-So the plugin **warns** when it detects `DSM UC` rather than refusing, and this
-page will keep saying "unverified" until someone reports a run. Both are in the
-register as R-15 and R-16.
+| | |
+|---|---|
+| `SYNO.Core.ISCSI.Node` uuid | unchanged, so the storage keeps its identity |
+| `multipath -ll`, before against after | identical: same WWID, same map, same paths |
+| Target IQN and portal | unchanged |
+| The iSCSI sessions | back on their own in **23 seconds**, after 8 retries |
+| The running guest | unaffected |
 
-**If you run either, one answer is worth more than any other report**: after a
-failover, does `SYNO.Core.ISCSI.Node` still return the same uuid? The plugin
-uses that uuid as its answer to "which storage server is this", rather than the
-management address, because an address can be re-pointed at a different NAS. If
-the uuid changes across a failover, one NAS is read as two, and the approach
-itself has to change.
+Those 23 seconds never reached multipath. A Proxmox VE node ships
+`node.session.timeo.replacement_timeout` at 120, so the session was still in
+recovery and no path was ever failed; `no_path_retry` did not come into it, which
+is why the guest saw nothing. Synology's published switchover times are 30 to 64
+seconds depending on the model, and they rise with the number of LUNs — of which
+this plugin makes one per VM disk.
+
+**The ungraceful half is untested.** A manual switchover waits for writes to
+finish. An auto-failover on power loss does not, and Synology's own white paper
+says data still in the failed server's cache may never be re-sent.
+
+UC is a genuine unknown, and the open questions are the ones only a chassis can
+answer — whether a LUN is owned by one controller, and whether a target's portals
+differ per controller. Together those decide whether a node still reaches its
+disk after a failover. So the plugin **warns** when it detects `DSM UC` rather
+than refusing it. Both are in the register as R-15 and R-16.
 
 ## Installing
 

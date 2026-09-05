@@ -1208,13 +1208,15 @@ one, the plugin refuses rather than assumes.
 
 ### Supported by design, unverified — needs hardware this project does not have
 
-Both of Synology's high-availability arrangements are implemented. Neither has
-been run. The plugin **warns** on a shape it cannot verify rather than refusing
-it, and will not claim otherwise until someone reports a run.
+Both of Synology's high-availability arrangements are implemented. **A manual
+switchover on an SHA pair has now been reported from hardware.** An auto-failover
+has not, and no dual-controller chassis has been near this. The plugin **warns**
+on a shape it cannot verify rather than refusing it, and will not claim otherwise
+until someone reports a run.
 
 | # | Question |
 |---|---|
-| R-15 | **Synology HA (SHA)**: does the HA cluster IP behave as a single management address across a failover, and does `SYNO.Core.ISCSI.Node`'s uuid — which this plugin uses as the storage's identity — survive one? If the uuid changes on failover, pinning a storage to it would break the storage rather than protect it |
+| R-15 | ~~**Synology HA (SHA)**: does the cluster IP behave as a single management address across a switchover, and does `SYNO.Core.ISCSI.Node`'s uuid — which this plugin uses as the storage's identity — survive one?~~ **ANSWERED for a manual switchover, from an operator's report on an RS2423RP+ SHA pair (DSM 7.4.1) rather than from a measurement here.** With a guest running: the uuid is unchanged, so the storage keeps its identity; `multipath -ll` is identical before and after, meaning the WWID, the map and the paths all survive; the target IQN and portal are unchanged; and the iSCSI sessions came back on their own in **23 seconds** after 8 retries, with the guest unaffected. Those 23 seconds never reached multipath: a Proxmox VE node ships `node.session.timeo.replacement_timeout` at 120, so the session was still in recovery, no path was ever failed and `no_path_retry` did not come into it. **Still open: the ungraceful half.** A manual switchover waits for writes to finish; an auto-failover on power loss does not, and Synology's own white paper says data still in the failed server's cache may never be re-sent. Worth knowing for capacity planning: Synology's published switchover times are 30 to 64 seconds by model and rise with the number of LUNs, of which this plugin makes one per VM disk |
 | R-16 | **UC / SA dual-controller models** (`firmware_ver` containing `DSM UC`): both controllers have their own management address and there is no floating one. `SYNO.Core.Network.Interface` accepts `relay_node=node0`/`node1` to enumerate the peer — on the single-controller test NAS both answer with the same interfaces, so the mechanism is harmless where it is not needed. **Implemented from Synology's own CSI logic; unverified.** The open questions are the ones a chassis answers: whether a LUN is owned by one controller, and whether a target's portals differ per controller — which together decide whether a node reaches its disk after a failover |
 
 ---
