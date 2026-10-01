@@ -307,4 +307,28 @@ SKIP: {
     like($warned, qr/refusing to flush/, 'and said so');
 }
 
+# claim_path takes an sd NAME, and refuses anything else by running nothing.
+#
+# The plugin used to call it with $dev, a by-path device, one line after an
+# ensure_map that had already claimed the path correctly. The validation below is
+# why that was invisible: an argument it cannot accept and a claim with nothing to
+# do both come back 0. The QNAP project hit the same call and found it there.
+{
+    no warnings 'redefine', 'once';
+    my @ran;
+    local *PVE::Storage::Custom::Synology::Multipath::run_cmd = sub { push @ran, $_[0]; return '' };
+
+    is(PVE::Storage::Custom::Synology::Multipath::claim_path(
+           '/dev/disk/by-path/ip-192.0.2.10:3260-iscsi-iqn.2000-01.com.synology:x-lun-3'),
+       0, 'claim_path refuses a by-path device');
+    is(PVE::Storage::Custom::Synology::Multipath::claim_path('/dev/sde'), 0,
+       'claim_path refuses a device node');
+    is(scalar @ran, 0, 'and ran no command for either');
+
+    is(PVE::Storage::Custom::Synology::Multipath::claim_path('sde'), 1,
+       'claim_path accepts a bare sd name');
+    is_deeply($ran[0], [ 'multipathd', 'add', 'path', 'sde' ],
+              'and claims that one path by name, never node-wide');
+}
+
 done_testing();

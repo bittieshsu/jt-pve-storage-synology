@@ -1560,8 +1560,12 @@ sub activate_volume {
         # `find_multipaths yes` a single-path device gets NO map, and the path
         # this plugin returns would point at nothing. Found by adding a second
         # node whose policy differed from the first's.
+        # ensure_map claims the path itself, from the basename of $dev. Calling
+        # claim_path($dev) here as well did nothing at all: it takes an sd NAME
+        # and $dev is a by-path device, so its own validation refused the
+        # argument and returned 0 — indistinguishable from a claim that found
+        # nothing to do. Found in the QNAP project and carried across.
         my $mapped = PVE::Storage::Custom::Synology::Multipath::ensure_map($wwid, $dev);
-        PVE::Storage::Custom::Synology::Multipath::claim_path($dev);
 
         # R-27. THE KERNEL AND MULTIPATHD DISAGREE ABOUT WHAT THIS DEVICE IS.
         #
@@ -1613,8 +1617,8 @@ sub activate_volume {
                 : undef;
             if (defined $ok && $ok) {
                 $dev = $again;
+                # Claims the path too — see the note on the first ensure_map.
                 PVE::Storage::Custom::Synology::Multipath::ensure_map($wwid, $dev);
-                PVE::Storage::Custom::Synology::Multipath::claim_path($dev);
             }
         }
 
